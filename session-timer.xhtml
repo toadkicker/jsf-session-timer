@@ -1,0 +1,67 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns:rich="http://richfaces.org/rich"
+                xmlns:s="http://jboss.com/products/seam/taglib"
+                xmlns:a4j="http://richfaces.org/a4j">
+
+    <rich:modalPanel id="sessionExpiringModal" height="125" width="250">
+        <f:facet name="header">
+            <h:outputText value="Inactivity Timer" />
+        </f:facet>
+        <div class="section">
+            <div id="countdown-timer">Your session will expire in
+                <span id="dialog-countdown" style="font-weight:bold; text-decoration: underline;"> </span>
+                seconds due to inactivity.
+            </div>
+            <div class="button-holder" style="margin-top: 10px;">
+                <a4j:form prependId="false">
+
+                    <s:link id="panicLogout" action="#{logoutAction.paniclogout}" styleClass="button"
+                            rendered="#{supportSessionManager.telephonyIntegrationEnabled and supportSessionManager.pendingLogOut}">
+                        <span class="inner-button">Panic Logout</span>
+                    </s:link>
+
+                    <a4j:commandLink onclick="Richfaces.showModalPanel('logOutModal')" styleClass="button"
+                                     rendered="#{supportSessionManager.telephonyIntegrationEnabled and !supportSessionManager.pendingLogOut}">
+                        <span class="inner-button">Logout</span>
+                    </a4j:commandLink>
+
+                    <s:link view="/home.xhtml" action="#{logoutAction.logout(null)}" styleClass="button"
+                            rendered="#{!supportSessionManager.telephonyIntegrationEnabled}">
+                        <span class="inner-button">Logout</span>
+                    </s:link>
+                </a4j:form>
+
+                <a id="#session-continue-button" class="button" href="#" onclick="window.location.reload();">
+                    <span class="inner-button">Continue</span>
+                </a>
+            </div>
+        </div>
+    </rich:modalPanel>
+    <script type="text/javascript">
+        var sessionChecker = Seam.Component.getInstance("sessionChecker");
+        var inactivity =  #{sessionChecker.sessionTimeoutSeconds} - 63; //kill the server session three seconds before the configured time
+        var $countdown = jQuery("#dialog-countdown");
+        jQuery.idleTimeout(document,'#session-continue-button',
+        {
+//            idleAfter: inactivity - 123,
+            idleAfter: 10, //dev
+//            warningLength: 60,
+            warningLength: 6, //dev
+            onIdle: function(){Richfaces.showModalPanel('sessionExpiringModal')},
+            onResume: function(){Richfaces.hideModalPanel('sessionExpiringModal')},
+            onCountdown: function(counter){
+                                          $countdown.html(counter); // update the counter
+                                          },
+            onTimeout: function(){
+                                  Richfaces.hideModalPanel('sessionExpiringModal');
+                                  logoutCallBackToServer();
+                                 }
+        });
+    </script>
+    <a4j:form ajaxSubmit="true">
+        <a4j:jsFunction name="logoutCallBackToServer" action="#{sessionChecker.logout(null)}" />
+    </a4j:form>
+</ui:composition>
